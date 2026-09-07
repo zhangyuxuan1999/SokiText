@@ -1,0 +1,17 @@
+---
+source: tests/styled_snap.rs
+expression: styled_view(term.backend().buffer())
+---
+--- text ---
+┌jio───────┐
+│ab        │
+└──────────┘
+ [+] | cur 0
+--- styles ---
+aaaaaaaaaaaa
+aaaaaaaaaaaa
+aaaaaaaaaaaa
+bbbbbbbbbbbb
+--- legend ---
+a = fg:Some(Reset) bg:Some(Reset) mod:NONE
+b = fg:Some(White) bg:Some(Blue) mod:NONE

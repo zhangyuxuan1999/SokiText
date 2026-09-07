@@ -1,0 +1,22 @@
+[package]
+name = "probe"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+assert_cmd = "2"
+base64ct = { version = "1.8.3", features = ["alloc"] }
+crossterm = "0.29"
+expectrl = "0.9"
+insta = "1"
+portable-pty = "0.9"
+proptest = "1"
+ratatui = "0.30"
+ropey = "1"
+similar-asserts = "2"
+tempfile = "3"
+vt100 = "0.16"
+
+[dev-dependencies]
+criterion = { version = "0.8", features = ["html_reports"] }
+

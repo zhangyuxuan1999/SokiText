@@ -28,3 +28,32 @@
   直接 curl github.com 与 crates.io HTTP API 被代理拦截（400/403），网页调研需走 WebSearch/WebFetch。
 
 （后续进展见下方追加）
+
+#### 调研执行情况
+
+- 方法：11 个并行 agent —— 8 个方向调研 + 2 个在本机做真实编译/测量的实证 agent + 1 个对抗性审稿 agent。
+  耗时约 2.7 小时，895 次工具调用，163 万 token。
+- 产物：
+  - `docs/research/` 六篇报告（索引见 `docs/research/README.md`）
+  - `docs/research/raw/research-2026-09-07.json` 419KB 原始结构化输出（含全部 findings / 证据 / URL，
+    报告里没展开的细节都在里面）
+  - `docs/decisions/` 五个 ADR
+- 已核实：仓库是 **public**（GitHub API `"private": false`）
+  → macOS/Windows runner 免费且无限量。**这是整个验证策略的前提，仓库不能转私有。**
+
+#### 本次得到的、最容易被遗忘的实测事实
+
+1. `execute!(out, EnterAlternateScreen, PushKeyboardEnhancementFlags(..))` —— 大多数教程的写法 ——
+   会让程序**在 Windows 上根本启动不了**（crossterm 0.29 在 Windows 上返回硬错误，不是 no-op），
+   而 `cargo check --target x86_64-pc-windows-msvc` 检查不出来。
+2. `tempfile::NamedTempFile` + persist 会把用户文件权限降成 0600、丢 xattr、断硬链接。
+3. `encoding_rs::UTF_16LE.encode(s)` 返回的是 **UTF-8 字节**，`had_errors == false`。
+4. ratatui 把双宽字符的第二格写成字面空格 → 手写逐格快照会把错误烤进 `.snap` 文件。
+5. PTY 测试用固定 sleep 必然 flaky（负载下 10ms sleep 失败率 56%）；谓词轮询 0/180 失败。
+6. 本机可以用 `pip install ziglang` + cargo-zigbuild 构建**真正的 macOS 二进制**，
+   但**从未执行过任何一个** —— macOS 是"构建已验证、运行未验证"。
+
+#### 下一步（等所有者拍板）
+
+阻塞第一行代码的四个问题见 `docs/research/06-open-questions.md`：
+编辑模型（模态/选区优先/非模态）、名字（`jio` 在 crates.io 被占 + 商标风险）、License、是否有 Rust 经验。

@@ -1,0 +1,9 @@
+---
+source: tests/styled_snap.rs
+expression: term.backend()
+---
+"┌jio─────────┐"
+"│中文abc     │" Hidden by multi-width symbols: [(2, " "), (4, " ")]
+"│👨‍👩‍👧‍👦x         │" Hidden by multi-width symbols: [(2, " ")]
+"└────────────┘"
+"     | cur 0  "

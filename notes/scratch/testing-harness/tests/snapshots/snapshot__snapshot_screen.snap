@@ -1,0 +1,12 @@
+---
+source: tests/snapshot.rs
+expression: term.backend()
+---
+"┌jio─────────────────────────┐"
+"│fn main() {                 │"
+"│    println!();             │"
+"│}                           │"
+"│                            │"
+"│                            │"
+"└────────────────────────────┘"
+" [+] | cur 29                 "
