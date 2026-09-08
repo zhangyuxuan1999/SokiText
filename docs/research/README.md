@@ -1,4 +1,4 @@
-# jio 调研报告（2026-09-07）
+# SokiText 调研报告（2026-09-07）
 
 > 调研方法：11 个并行 agent，8 个方向的文献/一手资料调研 + 2 个在本机做**真实编译与测量**的实证 agent
 > + 1 个对抗性审稿 agent（专门找前面十个的错）。原始输出见 [`raw/research-2026-09-07.json`](raw/research-2026-09-07.json)（419 KB）。
@@ -15,7 +15,8 @@
 | [03-cross-platform-hazards.md](03-cross-platform-hazards.md) | 会**静默毁掉用户文件**的跨平台陷阱清单 |
 | [04-verification-strategy.md](04-verification-strategy.md) | 没有 mac/Windows 怎么保证不发出坏版本：测试金字塔 + CI/发布流水线 |
 | [05-prior-art.md](05-prior-art.md) | 前人经验：xi-editor 复盘、Helix、Kakoune、Neovim、Zed、VS Code |
-| [06-open-questions.md](06-open-questions.md) | **需要你拍板的问题**（编辑模型、名字、License） |
+| [06-open-questions.md](06-open-questions.md) | **需要拍板的问题**（Q2/Q3/Q4 已定，剩 Q1 编辑模型阻塞开工） |
+| [07-language-tradeoffs.md](07-language-tradeoffs.md) | 六个语言的完整利弊对比（应要求单独写的） |
 
 ---
 
@@ -46,7 +47,7 @@
 前人项目最常见的死法**不是选错数据结构，是在能编辑文件之前就耗光了热情**（Ox 停在 2025-03，Zee 停在 2025-02，
 Helix 为了插件系统 14 个月没发版）。所以顺序是：
 
-- **Phase 0（几天）**：先搭测试骨架，再写编辑器。`jio-core` 纯函数 + 可注入事件流的 `event_loop_until_idle`，
+- **Phase 0（几天）**：先搭测试骨架，再写编辑器。`soki-core` 纯函数 + 可注入事件流的 `event_loop_until_idle`，
   第一个 commit 就把三平台 CI 矩阵立起来。**测试骨架如果不是第一个做的，就永远不会做。**
 - **Phase 1**：无聊但正确的核心。rope + 光标 + 撤销 + `LineEnding` 一等公民类型。不上 tokio，不上 tree-sitter。
 - **Phase 2**：**发布一个人能用的版本**。打开/编辑/保存/撤销/搜索/退出 + 三平台预编译二进制。
@@ -63,11 +64,19 @@ Helix 为了插件系统 14 个月没发版）。所以顺序是：
 2. **macOS 只验证了"能编译"，从没验证过"能跑"**。这次调研产出的所有 macOS 二进制，一个都没被执行过。
 3. **保存/编码路径会静默毁文件**。[实测] 三个"看起来对"的默认写法都会毁数据，见 [03-cross-platform-hazards.md](03-cross-platform-hazards.md)。
 
-### 需要你拍板的（我不替你决定）
+### 已拍板（2026-09-08）
 
-1. **编辑模型**：模态（vim/helix）还是非模态（nano/VS Code）？这个决定在 rope 之上游，且和终端约束冲突——
-   GNOME Terminal（Ubuntu/Fedora 默认）**根本发不出 Ctrl+Shift 和 Ctrl+数字**，非模态编辑器在多数 Linux 终端上会不够键位用。
-2. **名字**：`jio` 在 crates.io **已被占用**（0.0.0，2024-08-15），且 "JIO" 是 Reliance 的驰名商标、有起诉个人开发者的记录。
-3. **License**：现在仓库没有 LICENSE 文件 = 保留全部权利 = 没人能贡献、没法被打包分发。
+| 问题 | 结论 |
+|---|---|
+| **名字** | **SokiText**，二进制名 `soki`。`sokitext` / `soki` 在 crates.io 均可用（已核实）。原 `jio` 的商标与占名问题随改名消除 |
+| **语言** | **Rust**。项目采用 vibe coding，开发者的语言熟练度不再是变量；反而因为"没人逐行 review"，编译期安全的价值被放大 |
+| **License** | 暂缓。后果：Homebrew / Scoop / crates.io / 发行版打包在加 License 之前都做不了，只能提供 GitHub Release 裸二进制 |
+
+### 还需要拍板的
+
+1. 🔴 **Q1 按键怎么工作**（唯一还阻塞第一行代码的）：像记事本那样直接打字，还是像 vim 那样分模式，
+   还是像 Helix 那样"先选后动"？—— [用大白话解释在这里](06-open-questions.md#-q1-按键怎么工作唯一还阻塞第一行代码的问题)
+2. 🟠 **Q5 要不要 tree-sitter**：这是唯一能推翻"用 Rust"的问题
+3. 🟠 **Q6 v0.1 到底做什么**：没有这个清单就没法判断任何子系统该不该进 v1
 
 详见 [06-open-questions.md](06-open-questions.md)。

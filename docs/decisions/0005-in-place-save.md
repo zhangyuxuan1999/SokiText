@@ -5,7 +5,7 @@
 ## 决策
 
 - 默认 `save.strategy = "rewrite"`：打开已有 fd、truncate、写、`fdatasync`。**保留 inode。**
-- 崩溃安全用**写前日志**买：`<state_dir>/swap/<hash>.jio`，每约 200 次击键或 4 秒空闲 fsync
+- 崩溃安全用**写前日志**买：`<state_dir>/swap/<hash>.soki`，每约 200 次击键或 4 秒空闲 fsync
 - 提供 `"replace"`（原子替换）和 `"auto"`（vim `bufwrite.c` 启发式）
 
 ## 理由
@@ -33,4 +33,4 @@
 
 ## 什么会推翻它
 
-jio 主要面向超大文件（truncate 窗口期崩溃的概率高于用户在意元数据的概率）。
+SokiText 主要面向超大文件（truncate 窗口期崩溃的概率高于用户在意元数据的概率）。

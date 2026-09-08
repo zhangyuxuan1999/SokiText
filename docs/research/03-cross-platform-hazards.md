@@ -4,7 +4,7 @@
 > 不报错、不崩溃，只是悄悄改坏用户的文件。
 >
 > 在只有 Linux + ASCII 文件的开发环境里，这些坑**一个都不会暴露**。
-> 最可能让 jio 被人记住的不是"jio 崩了"，而是"**jio 把我文件吃了**"。
+> 最可能让 SokiText 被人记住的不是"SokiText 崩了"，而是"**SokiText 把我文件吃了**"。
 
 ## 🔴 A. 保存路径：三个"看起来对"的默认写法会毁数据
 
@@ -23,7 +23,7 @@ UTF_16LE.encode(s)          // 返回 UTF-8 字节，had_errors == false
 ```
 
 Windows 上 UTF-16LE 文件到处都是（PowerShell `>` 重定向、旧版记事本、`.reg` 导出、很多 `.ini`）。
-jio 会正确解码，然后写出一个**标着 UTF-16 实际是 UTF-8 的文件**，且没有任何错误标志。
+SokiText 会正确解码，然后写出一个**标着 UTF-16 实际是 UTF-8 的文件**，且没有任何错误标志。
 
 → **保存路径绝不能走 `Encoding::encode`**。UTF-16 输出必须手写：`str::encode_utf16()` + `to_le_bytes()` + BOM。
 
@@ -51,7 +51,7 @@ vim 的默认是 `backupcopy=auto` —— 注意不是 Unix 上的 `yes`，那�
 
 - **默认 `save.strategy = "rewrite"`**：打开已有 fd、truncate、写、`fdatasync`。
 - 崩溃安全用**日志**买，不要用 rename 的原子性买：
-  `<state_dir>/swap/<hash>.jio` 写前日志，每约 200 次击键或 4 秒空闲 fsync 一次（vim 的 `updatecount`/`updatetime` 模型），
+  `<state_dir>/swap/<hash>.soki` 写前日志，每约 200 次击键或 4 秒空闲 fsync 一次（vim 的 `updatecount`/`updatetime` 模型），
   内容含原文件身份（Unix: dev+ino；Windows: volume serial + file index）、mtime、size、redo log。
   **这能扛住 SIGKILL 和断电，rename 的原子性扛不住。**
 - 提供 `"replace"` 和 `"auto"`，`auto` 实现 vim 的 `bufwrite.c` 启发式：
@@ -59,7 +59,7 @@ vim 的默认是 `backupcopy=auto` —— 注意不是 Unix 上的 `yes`，那�
   或者对探测文件 fchown/fchmod 复现不了原 uid/gid/mode → 一律退回就地重写。
   **这套判断完全由 `fs::symlink_metadata` + 一次探测写决定，所以 Linux CI 上就能完整测。**
   > vim 的探测文件字面叫 `4913`（然后 5036、5159，每次 +123），这就是它会触发 webpack/cargo-watch 误重建的原因。
-  > jio 应该用隐藏名 `.jio-probe-<pid>-<rand>`，并且**按目录缓存结果**，不要每次保存都探测。
+  > SokiText 应该用隐藏名 `.soki-probe-<pid>-<rand>`，并且**按目录缓存结果**，不要每次保存都探测。
 
 ### A5. Windows rename 的额外规则
 
@@ -67,7 +67,7 @@ vim 的默认是 `backupcopy=auto` —— 注意不是 Unix 上的 `yes`，那�
   只在 `ERROR_ACCESS_DENIED` 时回退到 `FileRenameInfoEx`。**它不重试，也不处理 `ERROR_SHARING_VIOLATION`(32)**。
   而 32 正是别的进程（记事本、Office、Windows Search 索引、OneDrive、杀毒软件）持有文件时的错误码。
 - VS Code 对 EACCES/EPERM/EBUSY 用递增退避**重试最多 60 秒**。
-- → jio 必须把 `raw_os_error` 5 和 32 映射到重试循环，再退回就地写。
+- → SokiText 必须把 `raw_os_error` 5 和 32 映射到重试循环，再退回就地写。
   **GitHub 的 Windows runner 基本永远复现不了这个**（没有第三方杀软、没有 OneDrive、工作目录没有索引服务），
   所以这是"靠设计保证"，不是"靠 CI 保证"。
 - 若要做原子替换，Windows 上该用 **`ReplaceFileW`** 而不是 `MoveFileExW` —— 只有前者保留原文件的 ACL 和创建时间。
@@ -113,7 +113,7 @@ vim 的默认是 `backupcopy=auto` —— 注意不是 Unix 上的 `yes`，那�
 - **长路径**：GitHub 的 Windows runner 镜像里 `LongPathsEnabled=1`，**比用户的默认机器更宽松**——
   长路径测试在 CI 上通过说明不了任何问题。Rust std 对 ≥248 UTF-16 单元的路径会透明加 `\\?\` 前缀，
   但 `std::process::Command` 和你自己调的 Win32 API 不会。
-  → 若 jio 要 shell-out（formatter / LSP / git），需要通过 build script 嵌入 `longPathAware` manifest，
+  → 若 SokiText 要 shell-out（formatter / LSP / git），需要通过 build script 嵌入 `longPathAware` manifest，
   并且在 CI 里加一个把 `LongPathsEnabled` 关掉的 job。
 
 ## 🟠 D. 终端生命周期与信号
@@ -127,17 +127,17 @@ vim 的默认是 `backupcopy=auto` —— 注意不是 Unix 上的 `yes`，那�
 - **需要三条独立的恢复路径**：① 正常退出 ② panic hook ③ SIGTERM/SIGHUP handler。
   ratatui 0.30.2 的 `init`/`run` 会装一个恢复终端的 panic hook，但**必须装在你自己的 hook 之后**，
   而且 panic hook 对 SIGKILL/SIGSEGV/`process::abort` 无效。SIGKILL 和断电只能靠崩溃恢复日志。
-  → CI 可以测 ①②：在 pty 里跑 jio，退出后检查 termios 的 ECHO/ICANON 已恢复、且发出了 `ESC[?1049l`。
+  → CI 可以测 ①②：在 pty 里跑 soki，退出后检查 termios 的 ECHO/ICANON 已恢复、且发出了 `ESC[?1049l`。
 - **能力探测必须打到 `/dev/tty`，绝不能打到 stdout**，且要有硬超时（~100ms），并且用 is-terminal 判断门控。
   **裸 PTY 不是终端**——它不回答任何能力查询。[实测] 三种方式复现：探测发出 `ESC[?u ESC[c` 后超时挂住，
   而同一个二进制在 tmux pane 里立刻得到回复。
   ⚠️ **crossterm 自己的 `supports_keyboard_enhancement()` 硬编码了 2000ms 超时**，
-  会让 jio 在 tmux/CI/dumb 终端下启动卡两秒。要加一个"把 stdout 接管道后断言不卡死"的回归测试。
+  会让 SokiText 在 tmux/CI/dumb 终端下启动卡两秒。要加一个"把 stdout 接管道后断言不卡死"的回归测试。
 
 ## 🟡 E. 剪贴板
 
 - [实测] **arboard 3.6.1 在无头机器（包括默认的 `ubuntu-latest` runner）上直接失败**（X11 连接错误，实测 1 秒卡顿）。
-- Linux 上 X11/Wayland 让**复制方进程本身充当数据服务器**，所以 jio 退出后用户复制的内容就没了（除非有剪贴板管理器）。
+- Linux 上 X11/Wayland 让**复制方进程本身充当数据服务器**，所以 SokiText 退出后用户复制的内容就没了（除非有剪贴板管理器）。
 - **→ 三层策略**：内部寄存器永远是主力（yank/put 永远可用）；OSC 52 作为主要的对外通道；arboard 作为可选降级，
   **懒初始化、失败不致命、绝不阻塞启动**（要开 `wayland-data-control` feature）。
 - **OSC 52 是最优解还有一个原因：它在 PTY 测试里完全可观测**（vt100 有 `copy_to_clipboard` 回调），
@@ -148,7 +148,7 @@ vim 的默认是 `backupcopy=auto` —— 注意不是 Unix 上的 `yes`，那�
 
 - **必须监听父目录并按文件名过滤，绝不能 `watcher.watch(file)`**。
   [实测] inotify 对**文件**的监听在别的编辑器做一次原子替换后**永久失效**；对**目录**的监听能存活。
-  Windows 上 notify 总是通过监听父目录来模拟单文件监听——**同一份 jio 代码在两个 OS 上语义不同**。
+  Windows 上 notify 总是通过监听父目录来模拟单文件监听——**同一份 SokiText 代码在两个 OS 上语义不同**。
   这是少数几个能在 Linux runner 上便宜抓到的跨平台分歧。
 - notify 8.2.0 的已知限制：网络文件系统（NFS/SMB/WSL）可能完全不发事件；
   macOS FSEvents 无法可靠观察非本人拥有的文件；Windows 用固定 16KiB 缓冲、溢出时要求全量重扫；

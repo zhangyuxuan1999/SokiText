@@ -5,7 +5,7 @@
 ## 决策
 
 - 数据结构用 **rope**，v1 用 **ropey 1.6.1**，`default-features = false, features = ["simd", "cr_lines"]`
-- **所有 rope 调用点只出现在一个模块里**，`jio::Buffer` 对外只暴露**字节偏移**
+- **所有 rope 调用点只出现在一个模块里**，`soki::Buffer` 对外只暴露**字节偏移**
 - 光标/编辑抄 Helix 的代数：`Range{anchor,head}` / `Selection{ranges,primary}` / `ChangeSet{Retain|Delete|Insert}`
 - rope 里只存 UTF-8、只存 LF；编码和换行风格记在 `Document` 上，保存时还原
 

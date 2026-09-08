@@ -21,10 +21,10 @@ enum Effect { WriteFile { path: PathBuf, bytes: Vec<u8> }, SetClipboard(String),
 
 | crate | 内容 | 平台依赖 |
 |---|---|---|
-| `jio-core` | rope / 光标 / 撤销 / 命令 / keymap | **零平台依赖、零 C build script**（CI 强制） |
-| `jio-render` | `Core → ratatui::Buffer` | 只依赖 ratatui-core |
-| `jio-platform` | 文件/路径/编码/剪贴板，写成对"路径和字节"的准纯函数 | cfg 很多，但每个函数都能单独测 |
-| `jio` | 二进制 | 那 100~150 行外壳 |
+| `soki-core` | rope / 光标 / 撤销 / 命令 / keymap | **零平台依赖、零 C build script**（CI 强制） |
+| `soki-render` | `Core → ratatui::Buffer` | 只依赖 ratatui-core |
+| `soki-platform` | 文件/路径/编码/剪贴板，写成对"路径和字节"的准纯函数 | cfg 很多，但每个函数都能单独测 |
+| `soki` | 二进制 | 那 100~150 行外壳 |
 
 **最该抄的一个东西**：Helix 的 `Application::event_loop_until_idle(&mut rx_stream)` +
 `parse_macro("ihello<esc>")`。三个不同方向的调研独立地把它认定为"整份资料里最值得抄的单个构件"。
@@ -38,16 +38,16 @@ enum Effect { WriteFile { path: PathBuf, bytes: Vec<u8> }, SetClipboard(String),
 | **60%** | 纯核心：表驱动 + 击键 DSL | 普通 `cargo test`，微秒级 | 三个 OS |
 | **15%** | 属性 / 差分测试 | proptest：rope vs 朴素 `Vec<char>`；`undo(redo(x)) == x`；光标永远在字形簇边界；save→load 字节级往返 | 三个 OS |
 | **12%** | 渲染快照 | ratatui `TestBackend` + insta 1.48.0 | 三个 OS |
-| **8%** | 平台层 | `jio-platform` 的文件/路径/换行/编码测试，**普通 `cargo test`，不需要终端** | 三个 OS ← **macOS/Windows 覆盖率主要来自这里** |
+| **8%** | 平台层 | `soki-platform` 的文件/路径/换行/编码测试，**普通 `cargo test`，不需要终端** | 三个 OS ← **macOS/Windows 覆盖率主要来自这里** |
 | **4%** | PTY 端到端 | portable-pty 0.9.0 + vt100 0.16.2 | Linux 全量 / macOS 只做子串断言 / **Windows 只做冒烟** |
-| **1%** | 定时任务 | cargo-fuzz（Linux nightly）、cargo-mutants（每月，只对 jio-core）、benchmark | Linux |
+| **1%** | 定时任务 | cargo-fuzz（Linux nightly）、cargo-mutants（每月，只对 soki-core）、benchmark | Linux |
 
 目标：每个 runner 上整套 PR 测试 **< 60 秒**。（调研里 8 个测试含 3 个真 PTY 测试跑了 2.5 秒，这个目标是现实的。）
 
 ### 关键洞察：差分测试是性价比最高的一招
 
 把 rope 的行为和一个朴素 `String`/`Vec<char>` 参考实现对拍。便宜、无脑、抓 bug 极准。
-同理，用一个独立参考实现校验 jio 的行/列换算和 UTF-16 偏移。
+同理，用一个独立参考实现校验 SokiText 的行/列换算和 UTF-16 偏移。
 
 ### ⚠️ ratatui 快照的两个坑（见 [02-measurements.md](02-measurements.md) 有实测细节）
 
@@ -133,8 +133,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - run: |
-          if cargo tree -p jio-core | grep -qE 'crossterm|ratatui|termina'; then
-            echo "::error::jio-core must not depend on a terminal backend"; exit 1
+          if cargo tree -p soki-core | grep -qE 'crossterm|ratatui|termina'; then
+            echo "::error::soki-core must not depend on a terminal backend"; exit 1
           fi
 
   test:
@@ -209,10 +209,10 @@ cargo-zigbuild 是拿 zig 的 libSystem stub 链接的，不是 Apple 的链接�
 
 1. **`curl | sh` 安装脚本** —— 一个脚本同时服务 Linux + macOS。
    **curl 不会设置 `com.apple.quarantine`，所以从构造上就绕开了 Gatekeeper。**投入产出比最高。
-2. **Homebrew tap**（`zhangyuxuan1999/homebrew-jio`），要做 **formula 不是 cask**。
+2. **Homebrew tap**（`zhangyuxuan1999/homebrew-sokitext`），要做 **formula 不是 cask**。
    formula 免公证，Homebrew 会在安装时 ad-hoc 签名。
    （进 homebrew-core 需要 ≥75 star / ≥30 fork / ≥30 watcher，暂时够不着。）
-3. **Scoop bucket**（`zhangyuxuan1999/scoop-jio`），一个 JSON manifest 加 `checkver`+`autoupdate`。
+3. **Scoop bucket**（`zhangyuxuan1999/scoop-sokitext`），一个 JSON manifest 加 `checkver`+`autoupdate`。
    **Scoop 的下载路径不设 Mark-of-the-Web，所以没有 SmartScreen 弹窗** ——
    这是在没有证书的情况下给 Windows 用户干净安装体验的**唯一**办法。
 
@@ -234,7 +234,7 @@ WinGet / Chocolatey / AUR / Nix / deb / rpm / Snap / Flatpak 都是以后的事�
 `actions/attest-build-provenance`。
 
 > 注意"Rust release 构建默认就是可复现的"这个结论**是在一个没有 build script、没有 C 依赖的玩具 crate 上测的**，
-> 不能外推到有 tree-sitter `cc` build script 的 jio。
+> 不能外推到有 tree-sitter `cc` build script 的 SokiText。
 
 ## 第一天要写的 10 个测试
 
@@ -246,5 +246,5 @@ WinGet / Chocolatey / AUR / Nix / deb / rpm / Snap / Flatpak 都是以后的事�
 6. TestBackend 快照：一个含 CJK + emoji ZWJ + 组合字符的夹具（**这一个就是整个宽度回归套件**）
 7. 文件名校验表：Windows 保留名/保留字符/结尾空格句点（跑在 Linux 上）
 8. 非 UTF-8 文件名的打开-编辑-保存（Linux 上可测）
-9. 终端恢复：pty 里跑 jio，正常退出与 panic 退出后断言 termios 恢复且发出了 `ESC[?1049l`
+9. 终端恢复：pty 里跑 soki，正常退出与 panic 退出后断言 termios 恢复且发出了 `ESC[?1049l`
 10. 启动不卡死：把 stdout 接管道 + 无 TTY，断言不会因为能力探测超时而挂起

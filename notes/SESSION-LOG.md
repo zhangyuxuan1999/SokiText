@@ -1,4 +1,4 @@
-# jio 开发会话日志 / Session Log
+# SokiText 开发会话日志 / Session Log
 
 > 这个文件是跨会话的"记忆"。每个 Claude Code 会话开始前先读它，结束前更新它。
 > 开发容器是临时的（会被回收），所以任何有价值的中间产物都必须 commit 进这个仓库。
@@ -56,4 +56,45 @@
 #### 下一步（等所有者拍板）
 
 阻塞第一行代码的四个问题见 `docs/research/06-open-questions.md`：
-编辑模型（模态/选区优先/非模态）、名字（`jio` 在 crates.io 被占 + 商标风险）、License、是否有 Rust 经验。
+编辑模型（模态/选区优先/非模态）、名字（`SokiText` 在 crates.io 被占 + 商标风险）、License、是否有 Rust 经验。
+
+### 2026-09-08 — Session 1（续）：改名 + 三个决策落地
+
+**改名**：`jio` → **SokiText**。所有者已把 GitHub 仓库改名为 `zhangyuxuan1999/SokiText`
+（repo id 1360584115 未变，仍是 public）。本地 remote 已更新。
+
+命名约定：
+
+| 用途 | 名字 |
+|---|---|
+| 项目 / 应用名 | SokiText |
+| 可执行文件 | `soki` |
+| crate | `soki-core` / `soki-render` / `soki-platform` / `soki`(bin) |
+| 配置目录 | `~/.config/soki/` |
+| Homebrew tap / Scoop bucket | `homebrew-sokitext` / `scoop-sokitext` |
+
+名称可用性已核实（crates.io sparse index，2026-09-08）：`sokitext` `soki` `soki-text` 均为 404（可用）。
+
+> ⚠️ `docs/research/raw/research-2026-09-07.json` **故意保持原样不改名** —— 它是调研当时的存档，
+> 里面出现的 `jio` 是历史记录，不是笔误。
+
+**已定的决策**：
+
+| # | 决策 | 备注 |
+|---|---|---|
+| 名字 | SokiText / `soki` | 原 `jio` 的 crates.io 占名 + Reliance 商标风险随之消除 |
+| 语言 | **Rust**（ADR-0001 转为 accepted） | 所有者说明是 vibe coding，自身语言熟练度不再是变量 |
+| License | **暂缓** | 后果已写进 Q3：Homebrew/Scoop/crates.io/发行版打包在加 License 前都做不了 |
+
+**vibe coding 对论证的影响**（写进了 ADR-0001 和 07-language-tradeoffs.md）：
+"开发者会不会 Rust"这个因素消失，被"**没有人会逐行 review 代码，所以编译器和测试套件必须承担全部抓 bug 职责**"替代。
+这条对 Rust 有利——编辑器最可怕的 bug 是静默改坏用户文件，那类 bug 在 Go 里能编译通过、测试通过，
+只在真实用户的 GBK 文件/只读文件/软链接上出事。
+
+**新增文档**：`docs/research/07-language-tradeoffs.md`（应要求写的六语言完整利弊对比）。
+
+**Q1 已用大白话重写** —— 之前的问法太术语化，所有者反馈看不懂。
+
+#### 下一步
+
+只剩 **Q1（按键模型）** 阻塞第一行代码，其次是 Q5（要不要 tree-sitter）和 Q6（v0.1 功能清单）。

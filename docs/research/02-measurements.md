@@ -129,7 +129,7 @@ cargo check --release --target aarch64-apple-darwin       OK  3.89s
 - **没有控制终端**：`tty` → not a tty，`/dev/tty` → ENXIO。但全局 `/dev/ptmx` 是 0666，`pty.fork()` 能用 ——
   这就是 PTY 测试能成立的原因
 - **磁盘会成为瓶颈**：调研期间容器根分区一直在 97~99%。带 gix + criterion + tree-sitter 语法的
-  jio workspace 放不进默认位置，需要把 `CARGO_TARGET_DIR` 指到 `/dev/shm` 或定期清理
+  SokiText workspace 放不进默认位置，需要把 `CARGO_TARGET_DIR` 指到 `/dev/shm` 或定期清理
 
 ## PTY 测试的稳定性（这决定了端到端测试能不能用）
 

@@ -70,7 +70,7 @@ Helix 的解法是一个巨大的 `Editor` struct + 整数索引，Zed 不得不
 
 ### 什么会让我改主意
 
-jio 决定**不上 tree-sitter**（只用正则或手写高亮）。那样 Go 的 cgo 问题消失，它 5.6 倍的迭代速度对单人项目就是压倒性的。
+SokiText 决定**不上 tree-sitter**（只用正则或手写高亮）。那样 Go 的 cgo 问题消失，它 5.6 倍的迭代速度对单人项目就是压倒性的。
 所以"要不要 tree-sitter"是一个**架构决策，不是功能决策**——它同时决定语言和交叉编译能力。
 
 ---
@@ -89,7 +89,7 @@ Tauri 更糟：Linux 端 webview 是系统 webkit2gtk 依赖，无头环境完�
 ### 为什么不是"核心 + 独立前端进程"（xi-editor 模型）
 
 xi-editor 作者 Raph Levien 自己的复盘（两个 agent 分别抓取了原文）说：前后端分进程"**不是个好主意**"，
-异步是"**复杂度乘数**"，而且**坏掉的恰恰是滚动和折行时的 resize**——正是 jio 第一天就要有的功能。
+异步是"**复杂度乘数**"，而且**坏掉的恰恰是滚动和折行时的 resize**——正是 SokiText 第一天就要有的功能。
 
 对照组：Neovim 和 VS Code 的进程边界都在**边缘**（前者是一个笨拙的字符网格协议，后者是隔离不可信扩展），
 **不在模型层**。这是可以抄的；xi 的做法不可以。
@@ -98,9 +98,9 @@ xi-editor 作者 Raph Levien 自己的复盘（两个 agent 分别抓取了原�
 
 从第一个 commit 起就分成两个 crate：
 
-- `jio-core`：rope、字形簇光标模型、撤销、选区、语法、LSP。**不许依赖 crossterm/ratatui/termina**，
-  并且用 CI 强制：`cargo tree -p jio-core | grep -q crossterm && exit 1`
-- `jio-tui`：ratatui + 终端后端
+- `soki-core`：rope、字形簇光标模型、撤销、选区、语法、LSP。**不许依赖 crossterm/ratatui/termina**，
+  并且用 CI 强制：`cargo tree -p soki-core | grep -q crossterm && exit 1`
+- `soki-tui`：ratatui + 终端后端
 
 中间放**你自己的** `Backend` / `Capabilities` trait。这样以后换终端库是改一个模块，不是改整个项目。
 
@@ -111,12 +111,12 @@ xi-editor 作者 Raph Levien 自己的复盘（两个 agent 分别抓取了原�
   kitty 协议只用来解锁额外绑定，永远不承载默认绑定。模态编辑器之所以存在，很大程度上就是因为这个约束。
 - **[实测] crossterm 的 kitty 键盘增强命令在 Windows 上不是 no-op，是硬错误。**
   `execute!(out, EnterAlternateScreen, PushKeyboardEnhancementFlags(...))` —— 这是大多数教程的写法 ——
-  会让 jio **在 Windows 上根本启动不了**，报 `Keyboard progressive enhancement not implemented for the legacy Windows API`。
+  会让 SokiText **在 Windows 上根本启动不了**，报 `Keyboard progressive enhancement not implemented for the legacy Windows API`。
   而且 `cargo check --target x86_64-pc-windows-msvc` **完全检查不出来**。这个 bug 是靠 wine 跑出来的。
 - **宽度是渲染提示，不是真理。** [实测] 一个 ZWJ 家庭 emoji：unicode-width 算 2 格、tmux 3.4 渲染 5 格、vt100 认为 6 格。
   12 个测试字符串里有 7 个三方不一致。**没有任何 CI 层能抓住这一类问题。**
   结构性缓解：内部按字形簇建模，每画一行都重发一次绝对定位 `CSI row;col H`，
-  这样宽度分歧只毁掉一行的样子，而不会让整个屏幕错位。再加一个 `jio --width-report` 让用户能贴报告。
+  这样宽度分歧只毁掉一行的样子，而不会让整个屏幕错位。再加一个 `soki --width-report` 让用户能贴报告。
 
 ---
 

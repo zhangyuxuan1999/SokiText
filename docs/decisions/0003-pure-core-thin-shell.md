@@ -12,10 +12,10 @@ bytes/events --[decode]--> Key --[keymap]--> Cmd --[Core::apply]--> (State', Vec
 `Core::apply` 返回 I/O 的**描述**（`Effect::WriteFile{..}` / `SetClipboard(..)` / `Quit`），自己不做 I/O。
 不纯的外壳（raw mode、event::read、fs::write、terminal.draw）控制在 **100~150 行**。
 
-Workspace：`jio-core`（零平台依赖、零 C build script）/ `jio-render` / `jio-platform` / `jio`。
+Workspace：`soki-core`（零平台依赖、零 C build script）/ `soki-render` / `soki-platform` / `SokiText`。
 对应 Helix 的 helix-core / helix-view / helix-term —— 正是让 Helix 可测的那个形状。
 
-**CI 强制核心纯净性**：`cargo tree -p jio-core | grep -qE 'crossterm|ratatui|termina' && exit 1`
+**CI 强制核心纯净性**：`cargo tree -p soki-core | grep -qE 'crossterm|ratatui|termina' && exit 1`
 
 ## 理由
 

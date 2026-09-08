@@ -3,81 +3,129 @@
 > 这些是调研**答不了**的问题——它们要么是产品判断，要么依赖只有你知道的信息。
 > 每一条我都给了推荐答案和理由，但决定权在你。
 >
-> **前四条会阻塞第一行代码**，后面的可以边做边定。
+> **状态**：Q2（名字）、Q3（License）、Q4（语言）已在 2026-09-08 定下。
+> **现在只剩 Q1 阻塞第一行代码**，Q5 紧随其后，再后面的可以边做边定。
 
 ---
 
-## 🔴 Q1. 编辑模型：模态、选区优先、还是非模态？
+## 🔴 Q1. 按键怎么工作？（唯一还阻塞第一行代码的问题）
 
-**这个决定在 rope 之上游**，因为它决定核心数据结构：
+**大白话版**：你打开 SokiText，按下键盘上的 `d` 键，会发生什么？
 
-- 选区优先（Kakoune/Helix）→ 从第一个 commit 起就需要 `Selection { ranges: SmallVec<[Range; 1]> }` 和多光标
-- 非模态（nano/micro/VS Code）→ 单光标，完全不同的命令面
+三种主流答案，对应三类编辑器：
 
-**而且它和一个硬性终端约束冲突**：
+### A. 像记事本 / VS Code —— 「非模态」
 
-> [实测] GNOME Terminal（Ubuntu 和 Fedora 的默认终端，VTE，不支持 kitty 键盘协议）
-> **根本发不出 `Ctrl+Shift+*` 和 `Ctrl+数字`**，而且 `Tab == Ctrl+I`、`Enter == Ctrl+M`。
+按 `d` 就是打出一个字母 d。功能靠组合键：`Ctrl+S` 保存、`Ctrl+F` 查找、`Ctrl+Z` 撤销。
 
-**非模态编辑器在多数 Linux 终端上会不够键位用。**模态编辑器很大程度上就是因为这个约束才存在的。
+- 👍 任何人打开就会用，零学习成本
+- 👎 **在终端里组合键根本不够用。** 这是个硬约束，不是设计品味问题：
+  Ubuntu 和 Fedora 默认的 GNOME Terminal **物理上就传不出** `Ctrl+Shift+P` 这类按键，
+  也传不出 `Ctrl+1`~`Ctrl+9`；而且在终端协议里 `Tab` 和 `Ctrl+I` 是同一个字节、`Enter` 和 `Ctrl+M` 是同一个字节。
+  所以复杂一点的功能只能学 nano 那样搞两段式（先按 `Ctrl+X`，再按另一个键），用起来相当别扭。
 
-**我的推荐：选区优先的模态编辑器（Helix 模型）。**理由：
+### B. 像 vim —— 「模态」
 
-1. 它解决键位不够用的问题（这是终端里的硬约束，不是偏好）
-2. `Selection`/`ChangeSet` 代数让撤销、多光标、未来的协同变成**一套**机制
-3. 它是**纯 `jio-core` 里的模型决定，完全可无头单元测试** —— 不是架构豪赌，是可以放心花的创新预算
-4. `ranges.len() == 1` 就退化成 vim 式单光标，所以这是超集不是分支
+有两种状态。刚打开时是**命令模式**，这时 `d` 是"删除"命令、`j` 是"往下移动"，**不是**输入字母。
+按 `i` 进入**输入模式**才开始真正打字，按 `Esc` 回到命令模式。
 
-**反对意见**：如果你想要的是"能给不会 vim 的人用的编辑器"，那非模态才对，但你要接受在 GNOME Terminal 上
-只能靠 `Alt+` 和前缀键（像 nano 那样）撑起整个命令面。
+- 👍 每个字母键都能当一个命令用，键位一下子就够了，而且手不用离开主键区去够 Ctrl
+- 👎 不会 vim 的人打开之后一脸懵，很多人第一次连怎么退出都不知道（这是个著名的梗）
+
+### C. 像 Helix / Kakoune —— 「先选后动」（模态的一种改良）
+
+也是模态，但**动作的顺序反过来**。举个具体例子，"删掉后面两个单词"：
+
+| | vim（B 方案） | Helix（C 方案） |
+|---|---|---|
+| 怎么按 | `d2w` | `2w` 然后 `d` |
+| 过程 | 你得**先在脑子里想好**要删什么，一次性按完，按完才看到结果 | 先按 `2w`，屏幕上那两个词**高亮变蓝**，你看清楚了，再按 `d` 删掉 |
+
+而且它天生支持**多光标**：比如"把这个文件里所有的 `foo` 一次性改成 `bar`"，
+是选中所有 foo（屏幕上同时出现很多个光标），然后一起改——所见即所得。
+
+- 👍 每一步都有视觉反馈，不用盲按；多光标是免费送的；
+  从代码角度这是最干净的模型（撤销、多光标、以后可能的多人协同编辑变成**同一套**机制，而不是三套）
+- 👎 和 vim 的键位不完全兼容，本来会 vim 的人要适应几天
 
 ---
 
-## 🔴 Q2. 名字：`jio` 有两个现实障碍
+### 我的推荐：**C（Helix 式先选后动）**
 
-1. **crates.io 上 `jio` 已被占用**（版本 0.0.0，2024-08-15 发布）。
-   → `cargo publish` 和 `cargo install jio` 都不可用，除非走 crates.io 的名称争议流程。
-2. **"JIO" 是 Reliance Industries 的注册驰名商标**（多个美国注册），
-   印度法院授予过禁令，**且该公司有针对个人开发者的 `jio-` 前缀名称维权记录**。
+三条理由：
 
-改名的成本随每一个 commit 增长：发版之后再改意味着安装说明失效、Homebrew tap 作废、Scoop bucket 作废。
+1. **它解决了 A 方案的硬伤**（终端键位不够用），而这个硬伤是终端协议决定的，绕不过去
+2. **它是纯粹的"模型层"决定，完全可以无头单元测试** —— 也就是说，它不是架构豪赌，
+   是这个项目里少数几个可以放心花的"创新预算"
+3. **它是 B 的超集**：代码里 `选区数量 == 1` 的时候就退化成 vim 那样的单光标。
+   所以选 C 不等于放弃 B，选 A 才是真的关上门
 
-**我的推荐：现在就换一个名字。**可以保留 `jio` 作为仓库名/内部代号，但发布用的二进制名和 crate 名换掉。
-选名字时同时检查：crates.io、Homebrew formula、Scoop/WinGet、以及 `PATH` 上的二进制名冲突。
+**但这条推荐有个前提假设我不确定**：SokiText 主要是给你自己用的，还是想给不会 vim 的人用？
+如果是后者，A 方案才对，代价是接受 nano 那种两段式按键。
 
-**如果你坚持用 jio**，那也完全可以——只是要接受不发 crates.io、并承担商标风险。这是你的决定，我按你说的做。
+## ✅ Q2. 名字 —— 已定：**SokiText**（2026-09-08）
 
----
+GitHub 仓库已改名为 `zhangyuxuan1999/SokiText`（repo id 未变，仍为 public）。
 
-## 🔴 Q3. License
+名称占用核实（2026-09-08，走 crates.io sparse index）：
 
-**仓库现在没有 LICENSE 文件 = 保留全部权利** = 没人能贡献、fork 或打包分发，Homebrew/发行版打包直接被堵死。
+| 名字 | crates.io |
+|---|---|
+| `sokitext` | ✅ 可用（404） |
+| `soki` | ✅ 可用（404） |
+| `soki-text` | ✅ 可用（404） |
 
-**我的推荐：MIT OR Apache-2.0 双许可**（Rust 生态惯例）。
+**约定**：
 
-需要注意的依赖许可（聚合义务）：
+| 用途 | 名字 |
+|---|---|
+| 项目 / 应用名 | **SokiText** |
+| 可执行文件名 | **`soki`**（编辑器要天天敲，短的才顺手，参照 helix 的 `hx`） |
+| crate 名 | `soki-core` / `soki-render` / `soki-platform` / `soki`（bin） |
+| 配置目录 | `~/.config/soki/` |
+| Homebrew tap | `zhangyuxuan1999/homebrew-sokitext` |
+| Scoop bucket | `zhangyuxuan1999/scoop-sokitext` |
+
+> 原 `jio` 名称的问题（crates.io 被占 + Reliance 的驰名商标与维权记录）已随改名一并消除。
+> 待办：发版前再核对一次 Homebrew formula 名、WinGet 包 ID 和 `soki` 在 `PATH` 上的冲突。
+
+## ⏸️ Q3. License —— 暂缓（2026-09-08）
+
+所有者决定暂时不加 LICENSE 文件。
+
+**这意味着（不是反对，只是把后果写清楚，方便以后随时改）**：
+
+- 法律上等于**保留全部权利**：别人不能合法 fork、贡献或再分发
+- **Homebrew tap、Scoop bucket、发行版打包、crates.io 发布全部被堵死**
+  → 也就是说 [04](04-verification-strategy.md) 里那三个分发渠道在加 License 之前都做不了；
+  在此之前只能提供 GitHub Release 的裸二进制下载
+- 加 License 随时可以做，且越早越省事（贡献者一多，追溯授权就麻烦了）
+
+**依赖侧的聚合义务（无论将来选什么 License 都要注意）**：
 
 | 依赖 | 许可 | 注意 |
 |---|---|---|
-| nucleo 0.5.0 | **MPL-2.0** | 弱 copyleft，文件级。用它要知道 |
-| termina 0.4.0 | MIT **OR** MPL-2.0 | **明确选 MIT** |
+| nucleo 0.5.0 | **MPL-2.0** | 弱 copyleft，文件级 |
+| termina 0.4.0 | MIT **OR** MPL-2.0 | 用的时候明确选 MIT 那一支 |
 | ropey 1.6.1 | MIT only | ropey 2.0 才是 MIT OR Apache-2.0 |
-| Helix 的代码 / tree-house | MPL-2.0 | **所以只抄设计，不要 git 依赖它的 crate** |
+| Helix / tree-house | MPL-2.0 | **所以只抄设计，绝不 git 依赖它的 crate** |
 
----
+**建议的默认（等你想定的时候）**：MIT OR Apache-2.0 双许可，Rust 生态惯例。
 
-## 🔴 Q4. 你写过 Rust 吗？
+## ✅ Q4. 语言 —— 已定：**Rust**（2026-09-08）
 
-这不是客套问题。调研里最诚实的一条风险是：
+所有者的回答是"vibe coding，别纠结我会什么语言"。这改变了权重但不改变结论，
+完整的六语言利弊对比见 [07-language-tradeoffs.md](07-language-tradeoffs.md)，ADR 见 [0001](../decisions/0001-language-rust.md)。
 
-> 借用检查器 vs 编辑器天然的环形数据模型（buffer ↔ view ↔ cursor ↔ undo）
-> 是**整个项目最大的排期风险**。Helix 的解法是一个巨大的 `Editor` struct + 整数索引；
-> Zed 不得不发明 GPUI 的 `Entity<T>` 系统。
+一句话版本：
 
-如果答案是"没写过"，那么 Go 的 **5.6 倍增量编译速度**和没有借用检查器这两点，
-分量比任何一份调研给的都重，值得重新权衡（代价是放弃 tree-sitter，或者接受 macOS 构建完全无法本地复现）。
+> Rust 赢在 **tree-sitter 的交叉编译**（这台机器能造出真的 macOS 二进制，Go 造不出）、
+> **Unicode 时效性**、**库的可得性**；**不是**赢在运行时性能，
+> **也不是**因为 Go 的 GC 有问题（实测 Go 的 STW 最大 0.182ms，那个论点已经过时）。
+>
+> vibe coding 又额外加了一条：没人逐行 review 的时候，编译期安全的价值被放大了。
 
----
+**唯一会推翻它的是 Q5**：如果决定永久不用 tree-sitter，Go 的 5.6 倍迭代速度就成为压倒性优势。
 
 ## 🟠 Q5. 要不要 tree-sitter？（这是架构决策，不是功能决策）
 
@@ -105,7 +153,7 @@
 ## 🟡 Q7. 安全模型 / 工作区信任
 
 一个会启动 LSP server、加载 tree-sitter 语法、读取 per-project 配置的编辑器，就是一个任意代码执行面：
-clone 一个恶意仓库然后打开它，`.jio/config.toml` 里写什么就执行什么。VS Code 正是为此做了 Workspace Trust。
+clone 一个恶意仓库然后打开它，`.soki/config.toml` 里写什么就执行什么。VS Code 正是为此做了 Workspace Trust。
 
 另外：tree-sitter 的 C 语法是**在内存安全的编辑器里解析不可信输入的内存不安全代码**；
 Helix 的动态语法加载（从用户目录 dlopen 一个 .so）是第二条攻击路径。
@@ -133,7 +181,7 @@ Helix 的动态语法加载（从用户目录 dlopen 一个 .so）是第二条�
 **地雷**：[实测] `directories` 6.0.0 把 Windows 映射到 **Roaming AppData**、macOS 映射到 `~/Library/Application Support`，
 **而 TUI 用户预期的是 XDG**。**发布后再改是对用户不友好的**，所以要现在定。
 
-**我的推荐**：优先 `$XDG_CONFIG_HOME` / `~/.config/jio/`（三个平台都是），
+**我的推荐**：优先 `$XDG_CONFIG_HOME` / `~/.config/soki/`（三个平台都是），
 Windows 上 Roaming 只放那个小 config 文件、`LocalAppData` 放撤销历史/会话/swap/缓存。**并且写进文档。**
 
 ---
@@ -143,7 +191,7 @@ Windows 上 Roaming 只放那个小 config 文件、`LocalAppData` 放撤销历�
 两个方向给了两套不同的方案（vim 式 WAL 日志 vs 无损字节转义），**没人核算过成本，也没人问过 v0.1 是否需要**。
 
 **我的推荐**：v0.1 只做"保存前检查文件是否被外部修改过"（mtime + size），
-WAL 日志放到 Phase 2 —— 但**默认就地写入**这个决定要从第一天就定下来，因为它决定 `jio-platform` 的形状。
+WAL 日志放到 Phase 2 —— 但**默认就地写入**这个决定要从第一天就定下来，因为它决定 `soki-platform` 的形状。
 
 ---
 
